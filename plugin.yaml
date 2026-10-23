@@ -1,0 +1,4 @@
+name: pool-limits
+version: 1.0.0
+description: "Remaining model quota next to the Hermes Desktop model picker: every account of a CLIProxyAPI pool (Codex + Claude + GLM/Zhipu + Kimi API-key subscriptions) and the backend's own Codex accounts. The chip follows the selected model's family. Read-only."
+author: "mbis113"

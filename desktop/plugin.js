@@ -1,6 +1,7 @@
 /**
- * Pool Limits — a chip before the composer's model pill showing how much
- * model quota is left; click for every account and every rate-limit window.
+ * Pool Limits — a chip before the composer's model pill showing how much of
+ * the current model family's 5-hour quota is left; click for every account and
+ * every rate-limit window.
  *
  * Everything is read from the Hermes server the FOCUSED CHAT belongs to (the
  * app can hold several servers at once): requests go to that server, results
@@ -535,6 +536,18 @@ function tightest(account) {
   return values.length ? Math.min(...values) : null
 }
 
+// The 5-hour rolling window in every source's wording: GLM/Kimi (pool_usage.py)
+// call it «5 часов», Codex/Claude and the server's own usage call it «Session».
+const FIVE_HOUR_RE = /^(5\s*часов|5\s*h|five[\s_-]?hour|(current[\s_-]+)?session)$/i
+
+/** The account's 5-hour window — the limit the gauge shows. Null when this
+ *  account has no such window (then callers fall back to `tightest`). */
+function fiveHour(account) {
+  const window = (account?.windows ?? []).find(window => FIVE_HOUR_RE.test(String(window.label).trim()))
+
+  return window ? remainingOf(window) : null
+}
+
 /** The account Hermes is drawing from: first pool entry that is not exhausted. */
 function activeAccount(accounts) {
   const usable = accounts.filter(account => account.available && tightest(account) !== null)
@@ -562,23 +575,29 @@ function familyOf(model) {
   return /gpt|codex|\bo\d/.test(slug) ? 'codex' : null
 }
 
-/** Pool gauge for the chip: the mean of every readable account's tightest
- *  window (a proxy rotates across accounts, so no single one is "current"). */
+/** Pool gauge for the chip: every account's 5-hour window averaged (a proxy
+ *  rotates across accounts, so no single one is "current"); an account without
+ *  a 5h window contributes its tightest window instead, and when no account
+ *  has a 5h window at all the gauge degrades to the tightest mean. `fiveHour`
+ *  says which of the two the number is, so labels can name it honestly. */
 function poolSummary(accounts, model) {
   const family = familyOf(model)
   const scoped = accounts.filter(account => account.kind === family)
   const group = scoped.length ? scoped : accounts
-  const readable = group.map(tightest).filter(value => value !== null)
+  const fiveHourValues = group.map(fiveHour).filter(value => value !== null)
+  const useFiveHour = fiveHourValues.length > 0
+  const readable = useFiveHour ? fiveHourValues : group.map(tightest).filter(value => value !== null)
 
   if (!readable.length) {
-    return { remaining: null, alive: 0, total: group.length, family: scoped.length ? family : null }
+    return { remaining: null, alive: 0, total: group.length, family: scoped.length ? family : null, fiveHour: false }
   }
 
   return {
     remaining: Math.round(readable.reduce((sum, value) => sum + value, 0) / readable.length),
     alive: readable.filter(value => value > 0).length,
     total: group.length,
-    family: scoped.length ? family : null
+    family: scoped.length ? family : null,
+    fiveHour: useFiveHour
   }
 }
 
@@ -819,7 +838,11 @@ function PoolSection({ pool, model, update }) {
                 jsx('span', { style: { fontWeight: 600 }, children: `${KIND_LABELS[kind] ?? kind} · ${accounts.length}` }),
                 jsx('span', {
                   style: { ...MUTED, color: toneColor(summary.remaining) },
-                  children: summary.remaining === null ? 'нет данных' : `в среднем ${summary.remaining}% · живых ${summary.alive}`
+                  children: summary.remaining === null
+                    ? 'нет данных'
+                    : summary.fiveHour
+                      ? `5ч ${summary.remaining}% · живых ${summary.alive}`
+                      : `в среднем ${summary.remaining}% · живых ${summary.alive}`
                 })
               ]
             }),
@@ -1013,14 +1036,16 @@ function LimitsChip() {
   const ownAccounts = state.data?.hermes?.accounts ?? []
   const summary = poolAccounts.length ? poolSummary(poolAccounts, model) : null
   const account = activeAccount(ownAccounts)
-  const remaining = summary ? summary.remaining : tightest(account)
+  const remaining = summary ? summary.remaining : fiveHour(account) ?? tightest(account)
   const loading = !state.data && (state.status === 'idle' || state.status === 'loading')
   const label = remaining === null ? (loading ? '…' : '—') : `${remaining}%`
 
   const detail = summary
-    ? `пул${summary.family ? ` ${KIND_LABELS[summary.family]}` : ''}: в среднем осталось ${summary.remaining ?? '—'}% · живых аккаунтов ${summary.alive} из ${summary.total}`
+    ? `пул${summary.family ? ` ${KIND_LABELS[summary.family]}` : ''}: ${summary.fiveHour ? '5-часовой лимит, в среднем' : 'в среднем'} осталось ${summary.remaining ?? '—'}% · живых аккаунтов ${summary.alive} из ${summary.total}`
     : remaining !== null
-      ? `осталось ${remaining}%`
+      ? fiveHour(account) !== null
+        ? `5-часовое окно: осталось ${remaining}%`
+        : `осталось ${remaining}%`
       : state.data?.pool?.notInstalled
         ? 'плагин на этом сервере не установлен'
         : state.status === 'error'

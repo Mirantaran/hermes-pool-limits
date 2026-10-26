@@ -355,6 +355,14 @@ def _hermes_env_key(name: str) -> Optional[str]:
     return None
 
 
+_WINDOW_RANK = {"5 часов": 0, "Неделя": 1, "Месяц": 2, "Код, месяц": 3}
+
+
+def _ordered(windows: List[List[Any]]) -> List[List[Any]]:
+    """Canonical order on every provider: 5 часов → Неделя → Месяц; unknown labels keep their place."""
+    return sorted(windows, key=lambda w: _WINDOW_RANK.get(w[0], len(_WINDOW_RANK)))
+
+
 def _glm_usage(key: str, origin: str) -> Dict[str, Any]:
     payload = _get_json(origin + GLM_QUOTA_PATH, {"Authorization": f"Bearer {key}",
                                                   "Accept": "application/json"})
@@ -365,7 +373,7 @@ def _glm_usage(key: str, origin: str) -> Dict[str, Any]:
         unit = limit.get("unit")
         seconds = GLM_UNIT_SECONDS.get(unit, 0) * int(limit.get("number") or 1) if isinstance(unit, int) else 0
         if limit.get("type") == "TIME_LIMIT":
-            label = "Инструменты"          # search-prime / web-reader / zread share this one
+            label = "Месяц"
         elif seconds == 18000:
             label = "5 часов"
         elif seconds == 604800:
@@ -373,7 +381,7 @@ def _glm_usage(key: str, origin: str) -> Dict[str, Any]:
         else:
             label = f"Окно {limit.get('number')}×{limit.get('unit')}"
         windows.append([label, _percent(limit.get("percentage")), _epoch(limit.get("nextResetTime"))])
-    return {"p": "coding plan", "w": windows, "d": []}
+    return {"p": "coding plan", "w": _ordered(windows), "d": []}
 
 
 def _kimi_usage(key: str) -> Dict[str, Any]:
@@ -397,7 +405,7 @@ def _kimi_usage(key: str) -> Dict[str, Any]:
     parallel = payload.get("parallel") or {}
     if isinstance(parallel.get("limit"), (int, float)):
         details.append(f"Параллельных запросов: {int(parallel['limit'])}")
-    return {"p": "coding plan", "w": windows, "d": details}
+    return {"p": "coding plan", "w": _ordered(windows), "d": details}
 
 
 def _api_subscriptions() -> List[Tuple[str, str, Dict[str, Any]]]:

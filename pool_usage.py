@@ -19,7 +19,7 @@ stdlib only, so it runs under whatever ``python3`` the host has.
 Output (keys are short because ``shell.exec`` returns only the last 4000 chars of stdout):
     {"ok": true, "n": 6, "accounts": [
         {"i": 1, "t": "codex", "l": "user@example.com", "p": "plus", "off": false,
-         "w": [["Session", 12.5, 1790000000], ["Weekly", 95.0, 1790400000]], "d": [], "e": null}]}
+         "w": [["5 часов", 12.5, 1790000000], ["Неделя", 95.0, 1790400000]], "d": [], "e": null}]}
 ``w`` rows are [label, used_percent | null, reset_epoch | null]; ``e`` is a short error or null.
 """
 from __future__ import annotations
@@ -43,12 +43,12 @@ MAX_ACCOUNTS = 24  # keeps the line under shell.exec's 4000-char stdout tail
 SUPPORTED_TYPES = ("codex", "claude")
 
 CODEX_USAGE_URL = "https://chatgpt.com/backend-api/wham/usage"
-CODEX_WINDOWS_BY_SECONDS = {18000: "Session", 604800: "Weekly"}
-CODEX_WINDOWS_POSITIONAL = (("primary_window", "Session"), ("secondary_window", "Weekly"))
+CODEX_WINDOWS_BY_SECONDS = {18000: "5 часов", 604800: "Неделя"}
+CODEX_WINDOWS_POSITIONAL = (("primary_window", "5 часов"), ("secondary_window", "Неделя"))
 
 CLAUDE_USAGE_URL = "https://api.anthropic.com/api/oauth/usage"
-CLAUDE_WINDOWS = (("five_hour", "Session"), ("seven_day", "Weekly"),
-                  ("seven_day_opus", "Opus week"), ("seven_day_sonnet", "Sonnet week"))
+CLAUDE_WINDOWS = (("five_hour", "5 часов"), ("seven_day", "Неделя"),
+                  ("seven_day_opus", "Opus, неделя"), ("seven_day_sonnet", "Sonnet, неделя"))
 
 _PROXY_PROCESS = re.compile(r"cli-?proxy", re.I)
 _AUTH_DIR_LINE = re.compile(r"^\s*auth-dir\s*:\s*(.+?)\s*(?:#.*)?$", re.M)

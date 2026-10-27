@@ -24,7 +24,7 @@
 В Hermes Desktop: **Возможности → Плагины → Install from Git** →
 
 ```
-https://github.com/mbis113/hermes-pool-limits
+https://github.com/Mirantaran/hermes-pool-limits
 ```
 
 Отметьте обе галочки (**Плагин агента** и **Интерфейс Desktop**) → **Install**.

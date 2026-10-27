@@ -253,7 +253,9 @@ def _claude_usage(data: Dict[str, Any]) -> Dict[str, Any]:
     for key, label in CLAUDE_WINDOWS:
         window = payload.get(key)
         if isinstance(window, dict) and window.get("utilization") is not None:
-            windows.append([label, _percent(window.get("utilization"), fraction=True), _epoch(window.get("resets_at"))])
+            # Anthropic's ``utilization`` is ALREADY a percent (0…100) — never a 0…1 ratio;
+            # fraction=True turned «1 % использовано» into «100 % использовано».
+            windows.append([label, _percent(window.get("utilization")), _epoch(window.get("resets_at"))])
     details = []
     extra = payload.get("extra_usage") or {}
     if extra.get("is_enabled") and isinstance(extra.get("used_credits"), (int, float)) \

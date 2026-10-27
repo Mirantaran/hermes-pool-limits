@@ -34,7 +34,7 @@ const ROUTES_TTL_MS = 60_000
 const WIDE_PANEL_FROM = 4
 const LOW_REMAINING = 25
 const CRITICAL_REMAINING = 10
-const REPO_URL = 'https://github.com/mbis113/hermes-pool-limits'
+const REPO_URL = 'https://github.com/Mirantaran/hermes-pool-limits'
 
 const WINDOW_LABELS = {
   Session: '5 часов',
